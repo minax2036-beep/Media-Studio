@@ -1,4 +1,4 @@
-const CORE_URL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js";
+const CORE_URL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js";
 
 const FFMessageType = {
   LOAD: "LOAD",
@@ -30,7 +30,7 @@ async function load({ coreURL: requestedCoreURL, wasmURL: requestedWasmURL, work
   try {
     importScripts(coreURL);
   } catch {
-    if (!requestedCoreURL) coreURL = CORE_URL.replace("/umd/", "/esm/");
+    if (!requestedCoreURL) coreURL = CORE_URL;
     self.createFFmpegCore = (await import(coreURL)).default;
     if (!self.createFFmpegCore) throw ERROR_IMPORT_FAILURE;
   }
