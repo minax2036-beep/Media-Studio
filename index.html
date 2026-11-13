@@ -42,9 +42,9 @@
       <section class="page" id="page-video">
         <div class="page-title"><div class="eyebrow">MEDIA CONVERSION</div><h1>Video</h1><p>FFmpeg.wasmを使って動画を変換します。</p></div>
         <div class="workspace-card glass">
-          <label class="dropzone" for="video-file"><span class="drop-icon">▣</span><b>動画ファイルを選択</b><small>クリックしてファイルを選ぶ</small><input id="video-file" type="file" accept="video/*,.mkv,.avi,.mov,.webm"></label>
+          <label class="dropzone" for="video-file"><span class="drop-icon">▣</span><b>動画ファイルを選択</b><small>クリックしてファイルを選ぶ</small><input id="video-file" type="file" accept="video/*,.mkv,.avi,.mov,.webm,.ts,.mts,.m2ts,.3gp,.mpg,.mpeg,.flv,.wmv"></label>
           <div class="file-info" id="video-info">ファイル未選択</div>
-          <div class="control-row"><label>出力形式<select id="video-format"><option value="mp4">MP4 (H.264)</option><option value="webm">WebM</option><option value="mov">MOV</option><option value="gif">GIF</option></select></label><label>品質<select id="video-quality"><option value="balanced">標準</option><option value="high">高画質</option><option value="small">容量優先</option></select></label></div>
+          <div class="control-row"><label>出力形式<select id="video-format"><option value="mp4">MP4 (H.264)</option><option value="webm">WebM</option><option value="mov">MOV</option><option value="mkv">MKV (Matroska)</option><option value="avi">AVI</option><option value="ts">MPEG-TS</option><option value="3gp">3GP</option><option value="gif">GIF</option></select></label><label>品質<select id="video-quality"><option value="balanced">標準</option><option value="high">高画質</option><option value="small">容量優先</option></select></label></div>
           <button class="primary" id="video-run" disabled>変換を開始 <span>→</span></button>
           <div class="progress-wrap" id="video-progress" hidden><div class="progress-label"><span id="video-progress-label">準備中…</span><b id="video-progress-value">0%</b></div><div class="progress"><i id="video-progress-bar"></i></div></div>
           <p class="result" id="video-result" aria-live="polite"></p>
