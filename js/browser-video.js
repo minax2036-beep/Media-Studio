@@ -34,11 +34,11 @@ function waitForMediaEvent(element, successEvent, errorMessage) {
 }
 
 /**
- * Browser-native decode -> Canvas -> WebCodecs H.264 encode -> MP4.
+ * Browser-native video decode -> Canvas -> WebCodecs encode -> container.
  * Diagnostic mode intentionally exports only 5 seconds, 320px wide,
- * 5 fps, and without audio to isolate AV1 decoding and H.264 encoding.
+ * 5 fps, and without audio to isolate decoder/encoder compatibility.
  */
-export async function createDiagnosticMp4FromVideo(file, onProgress = () => {}) {
+export async function createBrowserVideo(file, format, onProgress = () => {}) {
   if (!("VideoEncoder" in window)) {
     throw new Error("このブラウザはWebCodecs VideoEncoderに対応していません。Chromeを最新版に更新して再試行してください。");
   }
@@ -46,9 +46,21 @@ export async function createDiagnosticMp4FromVideo(file, onProgress = () => {}) 
   const {
     Output,
     Mp4OutputFormat,
+    MovOutputFormat,
+    WebMOutputFormat,
     BufferTarget,
     CanvasSource
   } = await loadMediaBunny();
+
+  const formatConfig = {
+    mp4: { OutputFormat: Mp4OutputFormat, codec: "avc", mime: "video/mp4", bitrate: 500_000 },
+    mov: { OutputFormat: MovOutputFormat, codec: "avc", mime: "video/quicktime", bitrate: 500_000 },
+    webm: { OutputFormat: WebMOutputFormat, codec: "vp9", mime: "video/webm", bitrate: 500_000 }
+  }[format];
+
+  if (!formatConfig?.OutputFormat) {
+    throw new Error(`ブラウザ変換では未対応の出力形式です: ${format}`);
+  }
 
   const video = document.createElement("video");
   const sourceUrl = URL.createObjectURL(file);
@@ -59,7 +71,6 @@ export async function createDiagnosticMp4FromVideo(file, onProgress = () => {}) 
 
   let output = null;
   let videoSource = null;
-  let started = false;
 
   try {
     const metadataReady = waitForMediaEvent(
@@ -99,19 +110,18 @@ export async function createDiagnosticMp4FromVideo(file, onProgress = () => {}) 
     if (!context) throw new Error("Canvasを初期化できませんでした。");
 
     output = new Output({
-      format: new Mp4OutputFormat(),
+      format: new formatConfig.OutputFormat(),
       target: new BufferTarget()
     });
 
     videoSource = new CanvasSource(canvas, {
-      codec: "avc",
-      bitrate: 500_000
+      codec: formatConfig.codec,
+      bitrate: formatConfig.bitrate
     });
     output.addVideoTrack(videoSource);
 
-    onProgress({ progress: 0.02, label: "MP4エンコーダーを準備中…" });
+    onProgress({ progress: 0.02, label: "動画エンコーダーを準備中…" });
     await output.start();
-    started = true;
 
     for (let index = 0; index < frameCount; index++) {
       const timestamp = index / fps;
@@ -122,10 +132,7 @@ export async function createDiagnosticMp4FromVideo(file, onProgress = () => {}) 
           "seeked",
           "動画のフレーム移動に失敗しました。"
         );
-        video.currentTime = Math.min(
-          timestamp,
-          Math.max(0, duration - 0.04)
-        );
+        video.currentTime = Math.min(timestamp, Math.max(0, duration - 0.04));
         await seeked;
       }
 
@@ -133,33 +140,33 @@ export async function createDiagnosticMp4FromVideo(file, onProgress = () => {}) 
       await videoSource.add(timestamp, 1 / fps);
       onProgress({
         progress: ((index + 1) / frameCount) * 0.9,
-        label: "ブラウザで動画をデコード・エンコード中…"
+        label: `ブラウザで${format.toUpperCase()}を生成中…`
       });
     }
 
     videoSource.close();
     videoSource = null;
 
-    onProgress({ progress: 0.94, label: "MP4ファイルを仕上げ中…" });
+    onProgress({ progress: 0.94, label: `${format.toUpperCase()}ファイルを仕上げ中…` });
     await output.finalize();
-    started = false;
 
     const buffer = output.target.buffer;
     if (!buffer || buffer.byteLength === 0) {
-      throw new Error("MP4ファイルが空になりました。");
+      throw new Error(`${format.toUpperCase()}ファイルが空になりました。`);
     }
 
     onProgress({ progress: 1, label: "完了" });
-    return new Blob([buffer], { type: "video/mp4" });
+    return new Blob([buffer], { type: formatConfig.mime });
   } catch (error) {
     try { videoSource?.close(); } catch {}
     if (output && output.state !== "finalized" && output.state !== "canceled") {
       try { await output.cancel(); } catch {}
     }
     const message = String(error?.message || error);
-    if (/not supported|unsupported|encoder/i.test(message)) {
+    if (/not supported|unsupported|encoder|codec/i.test(message)) {
       throw new Error(
-        "このブラウザではH.264（AVC）エンコードを利用できません。WebCodecsの対応状況を確認してください。\n\n" + message
+        `このブラウザでは${format.toUpperCase()}用の動画エンコードを利用できません。WebCodecsの対応状況を確認してください。\n\n` +
+        message
       );
     }
     throw error;
