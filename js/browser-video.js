@@ -85,7 +85,7 @@ export async function createDiagnosticMp4FromVideo(file, onProgress = () => {}) 
 
     const duration = Math.min(video.duration, 5);
     const fps = 5;
-    const width = Math.min(320, video.videoWidth);
+    const width = Math.max(2, Math.floor(Math.min(320, video.videoWidth) / 2) * 2);
     const height = Math.max(
       2,
       Math.round((video.videoHeight * width / video.videoWidth) / 2) * 2
@@ -153,7 +153,7 @@ export async function createDiagnosticMp4FromVideo(file, onProgress = () => {}) 
     return new Blob([buffer], { type: "video/mp4" });
   } catch (error) {
     try { videoSource?.close(); } catch {}
-    if (started && output) {
+    if (output && output.state !== "finalized" && output.state !== "canceled") {
       try { await output.cancel(); } catch {}
     }
     const message = String(error?.message || error);
