@@ -1,48 +1,39 @@
 # Media Studio
 
-A local-first media workspace for video, audio, image processing, and media-page inspection.
+A browser-only media workspace for video, audio and image conversion.
 
-## Current status
+## Web edition
 
-**Foundation 0.1.0**
+Media Studio runs inside the browser. It does not require a Python server or a local backend.
 
-- Glass-style dashboard UI
-- Local Python HTTP server
-- Local environment status for FFmpeg / FFprobe
-- Optional module detection for yt-dlp and Pillow
-- No external upload server
+- **Video / Audio:** FFmpeg.wasm (loaded on demand)
+- **Image:** Canvas API
+- **History:** localStorage in the current browser
+- **Hosting:** GitHub Pages
 
-## Requirements
+Selected media files are processed in browser memory. They are not uploaded to a Media Studio server. FFmpeg.wasm runtime files are fetched from public CDNs when video/audio conversion is first used.
 
-- Python 3.10 or newer
-- FFmpeg and FFprobe (needed for video/audio features; not required just to open the dashboard)
+## GitHub Pages
 
-The foundation currently uses only Python's standard library.
+The GitHub Actions workflow in `.github/workflows/pages.yml` deploys the repository root whenever changes are pushed to `main`.
 
-## Run
+In the repository settings, open **Pages** and make sure the publishing source is **GitHub Actions**.
 
-Clone the repository, then run:
+After the first successful workflow, the site will be available at:
 
-```bash
-python3 app.py
-```
+`https://minax2036-beep.github.io/Media-Studio/`
 
-Open this address in your browser:
+## Local preview
 
-```
-http://127.0.0.1:8765
-```
+Because this is a static site, you can preview it with any static file server, or open `index.html` directly. Some browsers restrict module imports on `file://`, so a simple local static server is recommended for preview only.
 
-Stop the server with `Ctrl+C`.
+## Browser compatibility and limitations
 
-The server binds to `127.0.0.1`, so it is accessible only from the same computer by default.
+- A modern browser with JavaScript modules, WebAssembly, Canvas and Blob URL support is required.
+- FFmpeg.wasm can be memory- and CPU-intensive. Large videos may fail on low-memory devices.
+- This project uses the single-thread FFmpeg core; it does not require cross-origin isolation.
+- Codec availability depends on the FFmpeg.wasm core build.
+- Image GIF animation is not preserved by the current Canvas image workflow.
+- Browser storage is local to the current browser profile and can be cleared by browser settings.
 
-## Planned modules
-
-- Video: FFmpeg / FFprobe
-- Audio: FFmpeg
-- Image: Pillow
-- Downloader: yt-dlp for supported, permitted sources
-- Queue and history: local metadata
-
-Media Studio is intended for content you own or are authorized to process. Respect website terms, copyright, and access restrictions.
+Use media you own or are authorized to process, and respect applicable copyright and website terms.
