@@ -14,11 +14,9 @@ export async function getFFmpeg(onProgress = () => {}) {
       );
 
       const ffmpeg = new FFmpeg();
-
-      ffmpeg.on("log", ({ message }) => {
-        if (message) onProgress({ log: message });
+      ffmpeg.on("log", ({ message, type }) => {
+        if (message) onProgress({ log: message, type });
       });
-
       ffmpeg.on("progress", ({ progress, time }) => {
         onProgress({ progress, time });
       });
@@ -28,7 +26,6 @@ export async function getFFmpeg(onProgress = () => {}) {
       const classWorkerURL = new URL("./ffmpeg-worker.js", import.meta.url).href;
 
       await ffmpeg.load({ coreURL, wasmURL, classWorkerURL });
-
       ffmpegInstance = ffmpeg;
       return ffmpeg;
     })().catch(error => {
@@ -46,13 +43,20 @@ function safeName(name) {
 }
 
 export async function convertMedia({ file, kind, format, quality, onProgress }) {
-  const ffmpeg = await getFFmpeg(onProgress);
+  const logs = [];
+  const ffmpeg = await getFFmpeg(value => {
+    if (value && typeof value === "object" && value.log) {
+      logs.push(value.log);
+      if (logs.length > 80) logs.shift();
+    }
+    onProgress?.(value);
+  });
+
   const inputName = `input_${safeName(file.name)}`;
   const outputName = `output.${format}`;
 
   try {
     await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
-
     const args = ["-i", inputName];
 
     if (kind === "audio") {
@@ -62,54 +66,32 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
       else if (format === "flac") args.push("-c:a", "flac");
       else if (format === "wav") args.push("-c:a", "pcm_s16le");
       else if (format === "m4a") args.push("-c:a", "aac", "-b:a", quality);
-    } else {
-      if (format === "mp4" || format === "mov") {
-        const crf = quality === "high" ? "18" : quality === "small" ? "28" : "23";
-        args.push(
-          "-c:v", "libx264",
-          "-preset", "ultrafast",
-          "-crf", crf,
-          "-c:a", "aac",
-          "-movflags", "+faststart"
-        );
-        if (format === "mov") args.push("-f", "mov");
-      } else if (format === "webm") {
-        args.push(
-          "-c:v", "libvpx",
-          "-deadline", "realtime",
-          "-cpu-used", "8",
-          "-crf", quality === "high" ? "20" : "32",
-          "-b:v", "0",
-          "-c:a", "libopus"
-        );
-      } else if (format === "gif") {
-        args.push("-vf", "fps=12,scale=640:-1:flags=lanczos", "-an");
-      }
+    } else if (format === "mp4" || format === "mov") {
+      const crf = quality === "high" ? "18" : quality === "small" ? "28" : "23";
+      args.push("-c:v", "libx264", "-preset", "ultrafast", "-crf", crf, "-c:a", "aac", "-movflags", "+faststart");
+      if (format === "mov") args.push("-f", "mov");
+    } else if (format === "webm") {
+      args.push("-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "8", "-crf", quality === "high" ? "20" : "32", "-b:v", "0", "-c:a", "libopus");
+    } else if (format === "gif") {
+      args.push("-vf", "fps=12,scale=640:-1:flags=lanczos", "-an");
     }
 
     args.push("-y", outputName);
-    onProgress("変換中…");
+    onProgress?.("変換中…");
 
     const exitCode = await ffmpeg.exec(args);
     if (exitCode !== 0) {
-      throw new Error(`FFmpegの変換処理が終了コード ${exitCode} で失敗しました。`);
+      const details = logs.slice(-18).join("\\n");
+      throw new Error(
+        `FFmpegの変換処理が終了コード ${exitCode} で失敗しました。` +
+        (details ? `\\n\\nFFmpegログ:\\n${details}` : "\\nFFmpegログが取得できませんでした。")
+      );
     }
 
     const data = await ffmpeg.readFile(outputName);
     const mime = kind === "audio"
-      ? ({
-          mp3: "audio/mpeg",
-          wav: "audio/wav",
-          ogg: "audio/ogg",
-          flac: "audio/flac",
-          m4a: "audio/mp4"
-        }[format] || "application/octet-stream")
-      : ({
-          mp4: "video/mp4",
-          mov: "video/quicktime",
-          webm: "video/webm",
-          gif: "image/gif"
-        }[format] || "application/octet-stream");
+      ? ({ mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", flac: "audio/flac", m4a: "audio/mp4" }[format] || "application/octet-stream")
+      : ({ mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", gif: "image/gif" }[format] || "application/octet-stream");
 
     return new Blob([data], { type: mime });
   } finally {
