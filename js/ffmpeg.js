@@ -7,6 +7,21 @@ let enginePromise = null;
 let ffmpegInstance = null;
 let recentLogs = [];
 
+function resetFFmpegInstance(instance) {
+  // A WebAssembly RuntimeError can leave the worker's core unusable.
+  // Terminate it so the next conversion starts with a clean worker/core.
+  try {
+    instance?.terminate();
+  } catch (error) {
+    console.warn("Failed to terminate the broken FFmpeg instance:", error);
+  }
+
+  if (!instance || ffmpegInstance === instance) {
+    ffmpegInstance = null;
+    enginePromise = null;
+  }
+}
+
 export async function getFFmpeg(onProgress = () => {}) {
   if (ffmpegInstance?.loaded) return ffmpegInstance;
 
@@ -76,8 +91,7 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
       else if (format === "wav") args.push("-c:a", "pcm_s16le");
       else if (format === "m4a") args.push("-c:a", "aac", "-b:a", quality);
     } else if (format === "mp4") {
-      // Diagnostic pass-through test: do not decode or re-encode streams.
-      // This isolates FFmpeg's demuxer/muxer and file-system path from encoders.
+      // Keep stream copy as the current known-good MP4 diagnostic path.
       args.push("-c", "copy", "-movflags", "+faststart");
     } else if (format === "mov") {
       const crf = quality === "high" ? "18" : quality === "small" ? "28" : "23";
@@ -106,7 +120,18 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
       : ({ mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", gif: "image/gif" }[format] || "application/octet-stream");
 
     return new Blob([data], { type: mime });
+  } catch (error) {
+    const message = String(error?.message || error);
+    if (/RuntimeError|memory access out of bounds|WebAssembly|out of memory|abort\(/i.test(message)) {
+      resetFFmpegInstance(ffmpeg);
+      throw new Error(
+        `FFmpeg.wasm内部エラーが発生したため、変換エンジンを再起動対象にしました。次の変換では新しいエンジンを起動します。\n\n元のエラー: ${message}`
+      );
+    }
+    throw error;
   } finally {
+    // These cleanups are best-effort. If the worker was terminated after a
+    // WebAssembly crash, the calls may fail and are intentionally ignored.
     await ffmpeg.deleteFile(inputName).catch(() => {});
     await ffmpeg.deleteFile(outputName).catch(() => {});
   }
