@@ -2,6 +2,7 @@ const GIF_LIBRARY_URL = "https://cdn.jsdelivr.net/npm/gif.js.optimized@1.0.1/dis
 const GIF_WORKER_URL = "https://cdn.jsdelivr.net/npm/gif.js.optimized@1.0.1/dist/gif.worker.js";
 
 let gifLibraryPromise = null;
+let gifWorkerBlobUrlPromise = null;
 
 function loadGifLibrary() {
   if (window.GIF) return Promise.resolve(window.GIF);
@@ -12,7 +13,10 @@ function loadGifLibrary() {
       script.async = true;
       script.onload = () => {
         if (window.GIF) resolve(window.GIF);
-        else reject(new Error("GIFエンジンを読み込めませんでした。"));
+        else {
+          gifLibraryPromise = null;
+          reject(new Error("GIFエンジンを読み込めませんでした。"));
+        }
       };
       script.onerror = () => {
         gifLibraryPromise = null;
@@ -22,6 +26,32 @@ function loadGifLibrary() {
     });
   }
   return gifLibraryPromise;
+}
+
+// Worker() cannot load a cross-origin script URL directly.
+// Fetch the worker source (CORS-enabled CDN), then create a same-origin blob URL.
+async function loadGifWorkerUrl() {
+  if (!gifWorkerBlobUrlPromise) {
+    gifWorkerBlobUrlPromise = fetch(GIF_WORKER_URL, { mode: "cors" })
+      .then(async response => {
+        if (!response.ok) {
+          throw new Error(`GIF Workerの取得に失敗しました (HTTP ${response.status})。`);
+        }
+        const source = await response.text();
+        if (!source.trim()) throw new Error("GIF Workerの内容が空でした。");
+        return URL.createObjectURL(
+          new Blob([source], { type: "text/javascript" })
+        );
+      })
+      .catch(error => {
+        gifWorkerBlobUrlPromise = null;
+        throw new Error(
+          "GIF Workerを準備できませんでした。CDNへのアクセスまたはCORS設定を確認してください。\n" +
+          String(error?.message || error)
+        );
+      });
+  }
+  return gifWorkerBlobUrlPromise;
 }
 
 function waitFor(target, eventName, errorName = "error") {
@@ -44,7 +74,10 @@ function waitFor(target, eventName, errorName = "error") {
 }
 
 export async function createGifFromVideo(file, onProgress = () => {}) {
-  const GIF = await loadGifLibrary();
+  const [GIF, workerScript] = await Promise.all([
+    loadGifLibrary(),
+    loadGifWorkerUrl()
+  ]);
   const video = document.createElement("video");
   const sourceUrl = URL.createObjectURL(file);
   video.muted = true;
@@ -84,7 +117,7 @@ export async function createGifFromVideo(file, onProgress = () => {}) {
       quality: 15,
       width,
       height,
-      workerScript: GIF_WORKER_URL,
+      workerScript,
       repeat: 0
     });
 
