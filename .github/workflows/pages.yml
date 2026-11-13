@@ -25,6 +25,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
+      - name: Prepare same-origin FFmpeg worker
+        run: |
+          mkdir -p vendor/ffmpeg /tmp/ffmpeg-package
+          npm pack @ffmpeg/ffmpeg@0.12.10 --pack-destination /tmp
+          tar -xzf /tmp/ffmpeg-ffmpeg-0.12.10.tgz -C /tmp/ffmpeg-package
+          cp /tmp/ffmpeg-package/package/dist/esm/*.js vendor/ffmpeg/
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
