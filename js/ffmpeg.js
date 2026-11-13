@@ -15,7 +15,8 @@ export async function getFFmpeg(onProgress = () => {}) {
       ffmpeg.on("progress", ({ progress }) => onProgress({ progress }));
       const coreURL = await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, "text/javascript");
       const wasmURL = await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm");
-      await ffmpeg.load({ coreURL, wasmURL });
+      const classWorkerURL = new URL("../vendor/ffmpeg/worker.js", import.meta.url).href;
+      await ffmpeg.load({ coreURL, wasmURL, classWorkerURL });
       ffmpegInstance = ffmpeg;
       return ffmpeg;
     })().catch(error => {
