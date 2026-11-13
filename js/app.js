@@ -72,7 +72,7 @@ for (const kind of ["video", "audio"]) {
     const format = $(`${kind}-format`).value;
     setBusy(kind, true);
     showResult(kind, "");
-    setProgress(kind, 1, "FFmpeg.wasmを準備中…");
+    setProgress(kind, 1, "変換エンジンを準備中…");
     const isWebmInput = kind === "video" &&
       (/\.webm$/i.test(file.name) || file.type.toLowerCase().includes("webm"));
     const useBrowserMp4 = isWebmInput && format === "mp4";
@@ -110,7 +110,7 @@ for (const kind of ["video", "audio"]) {
       saveHistory(kind, filename, blob.size);
       setProgress(kind, 100, "完了");
       showResult(kind, `完了: ${filename} · ${sizeLabel(blob.size)}`);
-      $("ffmpeg-status").textContent = "Loaded";
+      $("ffmpeg-status").textContent = (kind === "video" && (format === "gif" || useBrowserMp4)) ? "Browser ready" : "Loaded";
     } catch (error) {
       console.error(error);
       showResult(kind, error.message || "変換に失敗しました。", true);
