@@ -1,4 +1,2 @@
-# Media Studio foundation uses only the Python standard library.
-# Optional modules will be added as their features are implemented:
-# yt-dlp
-# Pillow
+# Media Studio Web Edition has no Python dependencies.
+# It runs as a static website in a modern browser.
