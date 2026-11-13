@@ -75,10 +75,13 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
       else if (format === "flac") args.push("-c:a", "flac");
       else if (format === "wav") args.push("-c:a", "pcm_s16le");
       else if (format === "m4a") args.push("-c:a", "aac", "-b:a", quality);
-    } else if (format === "mp4" || format === "mov") {
+    } else if (format === "mp4") {
+      // Diagnostic pass-through test: do not decode or re-encode streams.
+      // This isolates FFmpeg's demuxer/muxer and file-system path from encoders.
+      args.push("-c", "copy", "-movflags", "+faststart");
+    } else if (format === "mov") {
       const crf = quality === "high" ? "18" : quality === "small" ? "28" : "23";
-      args.push("-c:v", "libx264", "-preset", "ultrafast", "-crf", crf, "-c:a", "aac", "-movflags", "+faststart");
-      if (format === "mov") args.push("-f", "mov");
+      args.push("-c:v", "libx264", "-preset", "ultrafast", "-crf", crf, "-c:a", "aac", "-f", "mov");
     } else if (format === "webm") {
       args.push("-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "8", "-crf", quality === "high" ? "20" : "32", "-b:v", "0", "-c:a", "libopus");
     } else if (format === "gif") {
