@@ -55,8 +55,10 @@ export async function createGifFromVideo(file, onProgress = () => {}) {
   let gif;
   try {
     const metadataReady = waitFor(video, "loadedmetadata");
+    const firstFrameReady = waitFor(video, "loadeddata");
     video.load();
     await metadataReady;
+    await firstFrameReady;
 
     if (!Number.isFinite(video.duration) || video.duration <= 0) {
       throw new Error("動画の長さを取得できませんでした。");
@@ -88,9 +90,11 @@ export async function createGifFromVideo(file, onProgress = () => {}) {
 
     for (let index = 0; index < frameCount; index++) {
       const timestamp = Math.min(index / fps, Math.max(0, duration - 0.04));
-      const seeked = waitFor(video, "seeked");
-      video.currentTime = timestamp;
-      await seeked;
+      if (index > 0) {
+        const seeked = waitFor(video, "seeked");
+        video.currentTime = timestamp;
+        await seeked;
+      }
       context.drawImage(video, 0, 0, width, height);
       gif.addFrame(context, { copy: true, delay: 1000 / fps });
       onProgress({ progress: ((index + 1) / frameCount) * 0.85 });
