@@ -91,8 +91,18 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
       else if (format === "wav") args.push("-c:a", "pcm_s16le");
       else if (format === "m4a") args.push("-c:a", "aac", "-b:a", quality);
     } else if (format === "mp4") {
-      // Keep stream copy as the current known-good MP4 diagnostic path.
-      args.push("-c", "copy", "-movflags", "+faststart");
+      // Diagnostic encode: only the first 5 seconds, scaled to 320px wide.
+      // Use the native MPEG-4 encoder and omit audio to isolate video decoding
+      // and encoding from audio codec compatibility and long-video memory use.
+      args.push(
+        "-t", "5",
+        "-vf", "scale=320:-2",
+        "-an",
+        "-c:v", "mpeg4",
+        "-q:v", "8",
+        "-f", "mp4",
+        "-movflags", "+faststart"
+      );
     } else if (format === "mov") {
       const crf = quality === "high" ? "18" : quality === "small" ? "28" : "23";
       args.push("-c:v", "libx264", "-preset", "ultrafast", "-crf", crf, "-c:a", "aac", "-f", "mov");
