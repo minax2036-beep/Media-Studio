@@ -138,6 +138,30 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
         "-c:a", "aac", "-b:a", "96k",
         "-f", "3gp"
       );
+    } else if (format === "psp") {
+      // PSP-compatible MP4: H.264 Baseline, QVGA-class widescreen,
+      // AAC-LC audio at 24 kHz. The PSP muxer writes the PSP MP4 variant.
+      args.push(
+        "-vf", "scale=480:272:force_original_aspect_ratio=decrease,pad=480:272:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30000/1001,format=yuv420p",
+        "-c:v", "libx264", "-preset", "ultrafast",
+        "-profile:v", "baseline", "-level:v", "3.0",
+        "-b:v", "600k", "-maxrate", "768k", "-bufsize", "1536k",
+        "-c:a", "aac", "-profile:a", "aac_low",
+        "-ar", "24000", "-ac", "2", "-b:a", "128k",
+        "-f", "psp"
+      );
+    } else if (format === "amv") {
+      // AMV is a strict AVI-derived format with paired AMV video and
+      // IMA-ADPCM-AMV audio streams. Keep the classic low-res/15 fps profile.
+      args.push(
+        "-vf", "scale=160:120:flags=lanczos,format=yuvj420p",
+        "-r", "15",
+        "-strict", "-1",
+        "-c:v", "amv",
+        "-c:a", "adpcm_ima_amv",
+        "-ar", "22050", "-ac", "1",
+        "-f", "amv"
+      );
     } else if (format === "gif") {
       args.push("-vf", "fps=12,scale=640:-1:flags=lanczos", "-an");
     }
@@ -165,6 +189,8 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
           avi: "video/x-msvideo",
           ts: "video/mp2t",
           "3gp": "video/3gpp",
+          psp: "video/mp4",
+          amv: "video/amv",
           gif: "image/gif"
         }[format] || "application/octet-stream");
 
