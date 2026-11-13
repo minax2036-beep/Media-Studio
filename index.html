@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#090d18">
+  <meta name="description" content="Media Studio - browser-based video, audio and image tools.">
+  <title>Media Studio</title>
+  <link rel="stylesheet" href="./css/style.css">
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <div class="layout">
+    <aside class="sidebar glass">
+      <a class="brand" href="./"><span class="brand-icon">M</span><span><b>Media Studio</b><small>WEB EDITION</small></span></a>
+      <div class="nav-label">WORKSPACE</div>
+      <nav>
+        <button class="nav active" data-page="home"><span>⌂</span>Overview</button>
+        <button class="nav" data-page="video"><span>▣</span>Video</button>
+        <button class="nav" data-page="audio"><span>♫</span>Audio</button>
+        <button class="nav" data-page="image"><span>▧</span>Image</button>
+      </nav>
+      <div class="nav-label second">LIBRARY</div>
+      <nav><button class="nav" data-page="history"><span>◷</span>History</button></nav>
+      <div class="side-bottom"><div class="local-box"><i></i><div><b>Browser processing</b><small>Files stay on this device</small></div></div><small class="version">MEDIA STUDIO · 0.2.0</small></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div class="crumb">Workspace <span>/</span> <b id="crumb">Overview</b></div><div class="web-pill"><i></i> WEB EDITION</div></header>
+      <section class="page active" id="page-home">
+        <div class="hero"><div><div class="eyebrow">YOUR CREATIVE WORKSPACE</div><h1>Make media.<br><em>Keep it simple.</em></h1><p>動画・音声・画像をブラウザだけで変換。</p></div><div class="orb"><div></div></div></div>
+        <div class="section-head"><div><h2>Workspace</h2><p>使いたいツールを選択</p></div><span>01 / TOOLS</span></div>
+        <div class="tool-grid">
+          <button class="tool-card purple" data-open="video"><span class="tile-icon">▣</span><span class="arrow">↗</span><b>Video</b><small>動画の形式変換</small><i>FFmpeg.wasm</i></button>
+          <button class="tool-card cyan" data-open="audio"><span class="tile-icon">♫</span><span class="arrow">↗</span><b>Audio</b><small>音声の形式変換</small><i>FFmpeg.wasm</i></button>
+          <button class="tool-card pink" data-open="image"><span class="tile-icon">▧</span><span class="arrow">↗</span><b>Image</b><small>画像変換・リサイズ</small><i>Canvas API</i></button>
+        </div>
+        <div class="section-head status-head"><div><h2>Engine status</h2><p>ブラウザ内の処理エンジン</p></div></div>
+        <div class="status-grid"><article class="status glass"><small>VIDEO / AUDIO</small><b id="ffmpeg-status">Not loaded</b><span>FFmpeg.wasm · On demand</span></article><article class="status glass"><small>IMAGE</small><b class="good">Ready</b><span>Canvas API · Built-in</span></article><article class="status glass"><small>STORAGE</small><b class="good">Local</b><span>Browser memory / history</span></article></div>
+        <p class="privacy-note">✦ ファイルは外部サーバーへアップロードされません。変換処理はこのブラウザ内で実行されます。</p>
+      </section>
+      <section class="page" id="page-video">
+        <div class="page-title"><div class="eyebrow">MEDIA CONVERSION</div><h1>Video</h1><p>FFmpeg.wasmを使って動画を変換します。</p></div>
+        <div class="workspace-card glass">
+          <label class="dropzone" for="video-file"><span class="drop-icon">▣</span><b>動画ファイルを選択</b><small>クリックしてファイルを選ぶ</small><input id="video-file" type="file" accept="video/*,.mkv,.avi,.mov,.webm"></label>
+          <div class="file-info" id="video-info">ファイル未選択</div>
+          <div class="control-row"><label>出力形式<select id="video-format"><option value="mp4">MP4 (H.264)</option><option value="webm">WebM</option><option value="mov">MOV</option><option value="gif">GIF</option></select></label><label>品質<select id="video-quality"><option value="balanced">標準</option><option value="high">高画質</option><option value="small">容量優先</option></select></label></div>
+          <button class="primary" id="video-run" disabled>変換を開始 <span>→</span></button>
+          <div class="progress-wrap" id="video-progress" hidden><div class="progress-label"><span id="video-progress-label">準備中…</span><b id="video-progress-value">0%</b></div><div class="progress"><i id="video-progress-bar"></i></div></div>
+          <p class="result" id="video-result" aria-live="polite"></p>
+        </div>
+      </section>
+      <section class="page" id="page-audio">
+        <div class="page-title"><div class="eyebrow">AUDIO CONVERSION</div><h1>Audio</h1><p>音声ファイルをブラウザ内で変換します。</p></div>
+        <div class="workspace-card glass">
+          <label class="dropzone" for="audio-file"><span class="drop-icon">♫</span><b>音声ファイルを選択</b><small>クリックしてファイルを選ぶ</small><input id="audio-file" type="file" accept="audio/*,.m4a,.flac,.ogg,.wav,.mp3"></label>
+          <div class="file-info" id="audio-info">ファイル未選択</div>
+          <div class="control-row"><label>出力形式<select id="audio-format"><option value="mp3">MP3</option><option value="wav">WAV</option><option value="ogg">OGG</option><option value="flac">FLAC</option><option value="m4a">M4A (AAC)</option></select></label><label>ビットレート<select id="audio-quality"><option value="128k">128 kbps</option><option value="192k" selected>192 kbps</option><option value="256k">256 kbps</option><option value="320k">320 kbps</option></select></label></div>
+          <button class="primary" id="audio-run" disabled>変換を開始 <span>→</span></button>
+          <div class="progress-wrap" id="audio-progress" hidden><div class="progress-label"><span id="audio-progress-label">準備中…</span><b id="audio-progress-value">0%</b></div><div class="progress"><i id="audio-progress-bar"></i></div></div>
+          <p class="result" id="audio-result" aria-live="polite"></p>
+        </div>
+      </section>
+      <section class="page" id="page-image">
+        <div class="page-title"><div class="eyebrow">IMAGE TOOLS</div><h1>Image</h1><p>Canvas APIで画像を変換・リサイズします。</p></div>
+        <div class="workspace-card glass">
+          <label class="dropzone" for="image-file"><span class="drop-icon">▧</span><b>画像ファイルを選択</b><small>PNG / JPEG / WebP / GIF など</small><input id="image-file" type="file" accept="image/*"></label>
+          <div class="file-info" id="image-info">ファイル未選択</div>
+          <div class="preview-wrap" id="image-preview-wrap" hidden><img id="image-preview" alt="選択した画像のプレビュー"></div>
+          <div class="control-row"><label>出力形式<select id="image-format"><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select></label><label>品質 <select id="image-quality"><option value="0.92">高</option><option value="0.8" selected>標準</option><option value="0.65">容量優先</option></select></label></div>
+          <div class="control-row dimensions"><label>幅 (px)<input type="number" id="image-width" min="1" max="12000" placeholder="元の幅"></label><label>高さ (px)<input type="number" id="image-height" min="1" max="12000" placeholder="元の高さ"></label></div>
+          <label class="check"><input type="checkbox" id="image-lock" checked> 縦横比を維持</label>
+          <button class="primary" id="image-run" disabled>画像を書き出す <span>→</span></button>
+          <p class="result" id="image-result" aria-live="polite"></p>
+        </div>
+      </section>
+      <section class="page" id="page-history">
+        <div class="page-title"><div class="eyebrow">LOCAL LIBRARY</div><h1>History</h1><p>このブラウザでの変換履歴。</p></div>
+        <div class="history-card glass"><div class="history-head"><b>Recent exports</b><button class="subtle-button" id="clear-history">履歴を消去</button></div><div id="history-list" class="history-list"><p class="empty">まだ履歴はありません。</p></div></div>
+      </section>
+      <footer class="footer"><span>MEDIA STUDIO · WEB EDITION</span><span>LOCAL-FIRST <b>✦</b></span></footer>
+    </main>
+  </div>
+</body>
+</html>
