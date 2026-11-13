@@ -1,5 +1,6 @@
 import { convertMedia } from "./ffmpeg.js";
 import { createGifFromVideo } from "./gif.js";
+import { createDiagnosticMp4FromVideo } from "./browser-video.js";
 import { loadImageFile, exportImage } from "./image.js";
 import { readHistory, addHistory, clearHistory } from "./storage.js";
 
@@ -72,21 +73,28 @@ for (const kind of ["video", "audio"]) {
     setBusy(kind, true);
     showResult(kind, "");
     setProgress(kind, 1, "FFmpeg.wasmを準備中…");
-    if (kind === "video" && format === "gif") {
+    const isWebmInput = kind === "video" &&
+      (/\.webm$/i.test(file.name) || file.type.toLowerCase().includes("webm"));
+    const useBrowserMp4 = isWebmInput && format === "mp4";
+
+    if (kind === "video" && (format === "gif" || useBrowserMp4)) {
       $("ffmpeg-status").textContent = "Browser decoder";
     } else if (kind !== "audio") {
       $("ffmpeg-status").textContent = "Loading…";
     }
     try {
-      const blob = kind === "video" && format === "gif"
-        ? await createGifFromVideo(file, value => {
-            if (value && typeof value === "object" && value.progress != null) {
-              setProgress(kind, value.progress * 100, "ブラウザでフレームを処理中…");
-            } else if (typeof value === "string") {
-              setProgress(kind, 85, value);
-            }
-          })
-        : await convertMedia({
+      const browserProgress = value => {
+        if (value && typeof value === "object" && value.progress != null) {
+          setProgress(kind, value.progress * 100, value.label || "ブラウザで処理中…");
+        } else if (typeof value === "string") {
+          setProgress(kind, 85, value);
+        }
+      };
+      const blob = useBrowserMp4
+        ? await createDiagnosticMp4FromVideo(file, browserProgress)
+        : kind === "video" && format === "gif"
+          ? await createGifFromVideo(file, browserProgress)
+          : await convertMedia({
         file, kind, format,
         quality: $(`${kind}-quality`).value,
         onProgress: value => {
