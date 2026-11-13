@@ -30,9 +30,15 @@ export async function getFFmpeg(onProgress = () => {}) {
         "application/wasm"
       );
 
-      // Let @ffmpeg/ffmpeg resolve its own packaged worker.js.
-      // The previous custom URL pointed to a file that is not in this repository.
-      await ffmpeg.load({ coreURL, wasmURL });
+      // Serve the FFmpeg worker from this GitHub Pages origin.
+      // A worker loaded directly from esm.sh is blocked by browser origin rules.
+      const classWorkerURL = new URL("./ffmpeg-worker.js", import.meta.url).href;
+
+      await ffmpeg.load({
+        coreURL,
+        wasmURL,
+        classWorkerURL
+      });
 
       ffmpegInstance = ffmpeg;
       return ffmpeg;
