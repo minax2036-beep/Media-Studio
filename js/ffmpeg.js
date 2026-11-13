@@ -8,8 +8,6 @@ let ffmpegInstance = null;
 let recentLogs = [];
 
 function resetFFmpegInstance(instance) {
-  // A WebAssembly RuntimeError can leave the worker's core unusable.
-  // Terminate it so the next conversion starts with a clean worker/core.
   try {
     instance?.terminate();
   } catch (error) {
@@ -64,6 +62,11 @@ function safeName(name) {
   return name.normalize("NFKC").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || "input";
 }
 
+function videoQualityArgs(quality) {
+  const q = quality === "high" ? "3" : quality === "small" ? "8" : "5";
+  return ["-q:v", q];
+}
+
 export async function convertMedia({ file, kind, format, quality, onProgress }) {
   recentLogs = [];
   const ffmpeg = await getFFmpeg(value => {
@@ -91,9 +94,8 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
       else if (format === "wav") args.push("-c:a", "pcm_s16le");
       else if (format === "m4a") args.push("-c:a", "aac", "-b:a", quality);
     } else if (format === "mp4") {
-      // Diagnostic encode: only the first 5 seconds, scaled to 320px wide.
-      // Use the native MPEG-4 encoder and omit audio to isolate video decoding
-      // and encoding from audio codec compatibility and long-video memory use.
+      // Kept as the conservative FFmpeg fallback. WebM inputs use the
+      // browser-native WebCodecs route in app.js.
       args.push(
         "-t", "5",
         "-vf", "scale=320:-2",
@@ -108,6 +110,34 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
       args.push("-c:v", "libx264", "-preset", "ultrafast", "-crf", crf, "-c:a", "aac", "-f", "mov");
     } else if (format === "webm") {
       args.push("-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "8", "-crf", quality === "high" ? "20" : "32", "-b:v", "0", "-c:a", "libopus");
+    } else if (format === "mkv") {
+      args.push(
+        "-c:v", "mpeg4",
+        ...videoQualityArgs(quality),
+        "-c:a", "aac", "-b:a", "160k",
+        "-f", "matroska"
+      );
+    } else if (format === "avi") {
+      args.push(
+        "-c:v", "mpeg4",
+        ...videoQualityArgs(quality),
+        "-c:a", "pcm_s16le",
+        "-f", "avi"
+      );
+    } else if (format === "ts") {
+      args.push(
+        "-c:v", "mpeg2video",
+        ...videoQualityArgs(quality),
+        "-c:a", "mp2", "-b:a", "192k",
+        "-f", "mpegts"
+      );
+    } else if (format === "3gp") {
+      args.push(
+        "-c:v", "mpeg4",
+        ...videoQualityArgs(quality),
+        "-c:a", "aac", "-b:a", "96k",
+        "-f", "3gp"
+      );
     } else if (format === "gif") {
       args.push("-vf", "fps=12,scale=640:-1:flags=lanczos", "-an");
     }
@@ -127,7 +157,16 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
     const data = await ffmpeg.readFile(outputName);
     const mime = kind === "audio"
       ? ({ mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", flac: "audio/flac", m4a: "audio/mp4" }[format] || "application/octet-stream")
-      : ({ mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", gif: "image/gif" }[format] || "application/octet-stream");
+      : ({
+          mp4: "video/mp4",
+          mov: "video/quicktime",
+          webm: "video/webm",
+          mkv: "video/x-matroska",
+          avi: "video/x-msvideo",
+          ts: "video/mp2t",
+          "3gp": "video/3gpp",
+          gif: "image/gif"
+        }[format] || "application/octet-stream");
 
     return new Blob([data], { type: mime });
   } catch (error) {
@@ -140,8 +179,6 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
     }
     throw error;
   } finally {
-    // These cleanups are best-effort. If the worker was terminated after a
-    // WebAssembly crash, the calls may fail and are intentionally ignored.
     await ffmpeg.deleteFile(inputName).catch(() => {});
     await ffmpeg.deleteFile(outputName).catch(() => {});
   }
