@@ -1,6 +1,6 @@
 import { convertMedia } from "./ffmpeg.js";
 import { createGifFromVideo } from "./gif.js";
-import { createDiagnosticMp4FromVideo } from "./browser-video.js";
+import { createBrowserVideo } from "./browser-video.js";
 import { loadImageFile, exportImage } from "./image.js";
 import { readHistory, addHistory, clearHistory } from "./storage.js";
 
@@ -75,9 +75,9 @@ for (const kind of ["video", "audio"]) {
     setProgress(kind, 1, "変換エンジンを準備中…");
     const isWebmInput = kind === "video" &&
       (/\.webm$/i.test(file.name) || file.type.toLowerCase().includes("webm"));
-    const useBrowserMp4 = isWebmInput && format === "mp4";
+    const useBrowserVideo = isWebmInput && ["mp4", "mov", "webm"].includes(format);
 
-    if (kind === "video" && (format === "gif" || useBrowserMp4)) {
+    if (kind === "video" && (format === "gif" || useBrowserVideo)) {
       $("ffmpeg-status").textContent = "Browser decoder";
     } else if (kind !== "audio") {
       $("ffmpeg-status").textContent = "Loading…";
@@ -90,8 +90,8 @@ for (const kind of ["video", "audio"]) {
           setProgress(kind, 85, value);
         }
       };
-      const blob = useBrowserMp4
-        ? await createDiagnosticMp4FromVideo(file, browserProgress)
+      const blob = useBrowserVideo
+        ? await createBrowserVideo(file, format, browserProgress)
         : kind === "video" && format === "gif"
           ? await createGifFromVideo(file, browserProgress)
           : await convertMedia({
@@ -110,7 +110,7 @@ for (const kind of ["video", "audio"]) {
       saveHistory(kind, filename, blob.size);
       setProgress(kind, 100, "完了");
       showResult(kind, `完了: ${filename} · ${sizeLabel(blob.size)}`);
-      $("ffmpeg-status").textContent = (kind === "video" && (format === "gif" || useBrowserMp4)) ? "Browser ready" : "Loaded";
+      $("ffmpeg-status").textContent = (kind === "video" && (format === "gif" || useBrowserVideo)) ? "Browser ready" : "Loaded";
     } catch (error) {
       console.error(error);
       showResult(kind, error.message || "変換に失敗しました。", true);
