@@ -24,7 +24,8 @@ function sizeLabel(bytes) {
 }
 function outputName(file, extension) {
   const base = file.name.replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|]/g, "_");
-  return `${base || "media"}_converted.${extension}`;
+  const outputExtension = extension === "psp" ? "mp4" : extension;
+  return `${base || "media"}_converted.${outputExtension}`;
 }
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
