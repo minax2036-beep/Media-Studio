@@ -1,4 +1,5 @@
 import { convertMedia } from "./ffmpeg.js";
+import { createGifFromVideo } from "./gif.js";
 import { loadImageFile, exportImage } from "./image.js";
 import { readHistory, addHistory, clearHistory } from "./storage.js";
 
@@ -71,9 +72,21 @@ for (const kind of ["video", "audio"]) {
     setBusy(kind, true);
     showResult(kind, "");
     setProgress(kind, 1, "FFmpeg.wasmを準備中…");
-    if (kind !== "audio") $("ffmpeg-status").textContent = "Loading…";
+    if (kind === "video" && format === "gif") {
+      $("ffmpeg-status").textContent = "Browser decoder";
+    } else if (kind !== "audio") {
+      $("ffmpeg-status").textContent = "Loading…";
+    }
     try {
-      const blob = await convertMedia({
+      const blob = kind === "video" && format === "gif"
+        ? await createGifFromVideo(file, value => {
+            if (value && typeof value === "object" && value.progress != null) {
+              setProgress(kind, value.progress * 100, "ブラウザでフレームを処理中…");
+            } else if (typeof value === "string") {
+              setProgress(kind, 85, value);
+            }
+          })
+        : await convertMedia({
         file, kind, format,
         quality: $(`${kind}-quality`).value,
         onProgress: value => {
