@@ -1,8 +1,11 @@
 const FFMPEG_VERSION = "0.12.10";
-const CORE_BASE = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${FFMPEG_VERSION}/dist/esm`;
+// @ffmpeg/ffmpeg 0.12.10 is paired with @ffmpeg/core 0.12.6.
+const CORE_VERSION = "0.12.6";
+const CORE_BASE = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${CORE_VERSION}/dist/esm`;
 
 let enginePromise = null;
 let ffmpegInstance = null;
+let recentLogs = [];
 
 export async function getFFmpeg(onProgress = () => {}) {
   if (ffmpegInstance?.loaded) return ffmpegInstance;
@@ -15,7 +18,11 @@ export async function getFFmpeg(onProgress = () => {}) {
 
       const ffmpeg = new FFmpeg();
       ffmpeg.on("log", ({ message, type }) => {
-        if (message) onProgress({ log: message, type });
+        if (message) {
+          recentLogs.push(message);
+          if (recentLogs.length > 100) recentLogs.shift();
+          onProgress({ log: message, type });
+        }
       });
       ffmpeg.on("progress", ({ progress, time }) => {
         onProgress({ progress, time });
@@ -43,11 +50,13 @@ function safeName(name) {
 }
 
 export async function convertMedia({ file, kind, format, quality, onProgress }) {
-  const logs = [];
+  recentLogs = [];
   const ffmpeg = await getFFmpeg(value => {
     if (value && typeof value === "object" && value.log) {
-      logs.push(value.log);
-      if (logs.length > 80) logs.shift();
+      if (recentLogs.length === 0 || recentLogs[recentLogs.length - 1] !== value.log) {
+        recentLogs.push(value.log);
+        if (recentLogs.length > 100) recentLogs.shift();
+      }
     }
     onProgress?.(value);
   });
@@ -81,10 +90,10 @@ export async function convertMedia({ file, kind, format, quality, onProgress }) 
 
     const exitCode = await ffmpeg.exec(args);
     if (exitCode !== 0) {
-      const details = logs.slice(-18).join("\\n");
+      const details = recentLogs.slice(-24).join("\n");
       throw new Error(
         `FFmpegの変換処理が終了コード ${exitCode} で失敗しました。` +
-        (details ? `\\n\\nFFmpegログ:\\n${details}` : "\\nFFmpegログが取得できませんでした。")
+        (details ? `\n\nFFmpegログ:\n${details}` : "\nFFmpegログが取得できませんでした。")
       );
     }
 
